@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ASCII Animation</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: black;
+            overflow: hidden;
+            cursor: crosshair;
+        }
+        canvas {
+            display: block;
+            margin: 0 auto;
+            background-color: black;
+        }
+    </style>
+</head>
+<body>
+<canvas id="asciiCanvas"></canvas>
+<script>
+    const config = {
+        useWaveAnimation: true
+    };
+
+    if (config.useWaveAnimation) {
+        const canvas = document.getElementById('asciiCanvas');
+        const ctx = canvas.getContext('2d');
+        const asciiChars = ['.', ',', '-', '~', '=', '+', '*', '#', '%', '8', '@'];
+        const fontSize = 20;
+        let columns = Math.floor(window.innerWidth / fontSize);
+        let rows = Math.floor(window.innerHeight / fontSize);
+        let frame = 0;
+
+        let mouseX = -1000;
+        let mouseY = -1000;
+
+        window.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+        });
+
+        window.addEventListener('mouseout', () => {
+            mouseX = -1000;
+            mouseY = -1000;
+        });
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        ctx.textBaseline = 'top';
+
+        function getAsciiChar(value) {
+            const clampedValue = Math.max(0, Math.min(255, value));
+            return asciiChars[Math.floor(clampedValue / 255 * (asciiChars.length - 1))];
+        }
+
+        function animate() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.font = `${fontSize}px monospace`;
+
+            for (let y = 0; y < rows; y++) {
+                for (let x = 0; x < columns; x++) {
+                    const horizontalSwell = Math.sin(x * 0.05 - frame * 0.005);
+                    const verticalSway = Math.cos(y * 0.05 - frame * 0.006);    
+                    const diagonalChop = Math.sin((x - y) * 0.04 + frame * 0.007) * 0.5; 
+                    
+                    let wave = (horizontalSwell + verticalSway + diagonalChop) / 2.5;
+
+                    let offsetX = horizontalSwell * (fontSize *0.8);
+                    let offsetY = verticalSway * (fontSize *0.8);
+
+                    const charPixelX = x * fontSize + offsetX;
+                    const charPixelY = y * fontSize + offsetY;
+
+                    const dx = charPixelX - mouseX;
+                    const dy = charPixelY - mouseY;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    const influenceRadius = 500;
+                    let mouseInfluence = 0;
+
+                    if (distance < influenceRadius) {
+                        mouseInfluence = (influenceRadius - distance) / influenceRadius;
+                        wave += mouseInfluence * 1.2; 
+
+                        offsetX -= (dx / distance) * mouseInfluence * fontSize;
+                        offsetY -= (dy / distance) * mouseInfluence * fontSize;
+                    }
+
+                    const rawValue = wave * 127 + 128;
+                    const value = Math.max(0, Math.min(255, rawValue));
+                    const char = getAsciiChar(value);
+
+                    let hue = 200;
+                    let lightness = 30 + (value / 255) * 50;
+
+                    if (mouseInfluence > 0) {
+                        hue = 200 - (mouseInfluence * 40);
+                        lightness += mouseInfluence * 30;
+                    } else {
+                        lightness = 80 + ((value - 220) / 35) * 20;
+                    }
+
+                    ctx.fillStyle = `hsl(${hue}, 100%, ${lightness}%)`;
+                    ctx.fillText(char, (x * fontSize) + offsetX, (y * fontSize) + offsetY);
+                }
+            }
+            frame++;
+            requestAnimationFrame(animate);
+        }
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            columns = Math.floor(window.innerWidth / fontSize);
+            rows = Math.floor(window.innerHeight / fontSize);
+            ctx.textBaseline = 'top';
+        });
+
+        animate();
+    } else {
+        const canvas = document.getElementById('asciiCanvas');
+        const ctx = canvas.getContext('2d');
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*()_+~|}{[]:;?><,./-='.split('');
+        const fontSize = 16;
+        const columns = canvas.width / fontSize;
+        const drops = [];
+
+        for (let x = 0; x < columns; x++) {
+            drops[x] = 1;
+        }
+
+        function draw() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)'; 
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = '#0F0';
+            ctx.font = fontSize + 'px monospace';
+
+            for (let i = 0; i < drops.length; i++) {
+                const text = characters[Math.floor(Math.random() * characters.length)];
+                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+                if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                    drops[i] = 0;
+                }
+                    
+                drops[i]++;
+            }
+        }
+
+        setInterval(draw, 33); 
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+    }
+</script>
+
+</body>
