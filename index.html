@@ -116,11 +116,11 @@
             });
         }
 
-        function addObstacle(x, y, isPermanent, isTrail) {
+        function addObstacle(x, y, isPermanent) {
             let lastX = isPermanent ? lastDrawX : lastTrailX;
             let lastY = isPermanent ? lastDrawY : lastTrailY;
 
-            if (lastDrawX === -1000 || lastDrawY === -1000) {
+            if (lastX === -1000 || lastY === -1000) {
                 obstacles.push({ x: x, y: y, lifespan: isPermanent ? config.obstacleLifespan : config.trailLifespan, permanent: isPermanent });
                 if (isPermanent) { lastDrawX = x; lastDrawY = y; } 
                 else { lastTrailX = x; lastTrailY = y; }
