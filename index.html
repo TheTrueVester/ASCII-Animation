@@ -22,13 +22,21 @@
 <canvas id="asciiCanvas"></canvas>
 <script>
     const config = {
-        useWaveAnimation: true
+        useWaveAnimation: true,
+
+        enableMouseInteraction: true,
+        enableMousePush: false,
+        mousePushStrength: 1.5,
+        mouseInfluenceRadius: 500,
+
+        baseLightness: 15,
+        maxLightness: 75,
     };
 
     if (config.useWaveAnimation) {
         const canvas = document.getElementById('asciiCanvas');
         const ctx = canvas.getContext('2d');
-        const asciiChars = ['.', ',', '-', '~', '=', '+', '*', '#', '%', '8', '@'];
+        const asciiChars = [' ', '.', ',', ':', ';', '-', '_', '~', '=', '+', '*', 'o', 'x', '%', '#', '&', '8', 'B', '@'];
         const fontSize = 20;
         let columns = Math.floor(window.innerWidth / fontSize);
         let rows = Math.floor(window.innerHeight / fontSize);
@@ -37,10 +45,12 @@
         let mouseX = -1000;
         let mouseY = -1000;
 
-        window.addEventListener('mousemove', (e) => {
-            mouseX = e.clientX;
-            mouseY = e.clientY;
-        });
+        if (config.enableMouseInteraction) {
+            window.addEventListener('mousemove', (e) => {
+                mouseX = e.clientX;
+                mouseY = e.clientY;
+            });
+        }
 
         window.addEventListener('mouseout', () => {
             mouseX = -1000;
@@ -59,7 +69,7 @@
 
         function animate() {
             ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.font = `${fontSize}px monospace`;
 
             for (let y = 0; y < rows; y++) {
@@ -80,28 +90,30 @@
                     const dy = charPixelY - mouseY;
                     const distance = Math.sqrt(dx * dx + dy * dy);
 
-                    const influenceRadius = 500;
+                    const influenceRadius = config.mouseInfluenceRadius;
                     let mouseInfluence = 0;
 
                     if (distance < influenceRadius) {
                         mouseInfluence = (influenceRadius - distance) / influenceRadius;
                         wave += mouseInfluence * 1.2; 
 
-                        offsetX -= (dx / distance) * mouseInfluence * fontSize;
-                        offsetY -= (dy / distance) * mouseInfluence * fontSize;
+                        if (config.enableMousePush) {
+                        offsetX -= (dx / distance) * mouseInfluence * fontSize * config.mousePushStrength;
+                        offsetY -= (dy / distance) * mouseInfluence * fontSize * config.mousePushStrength;
+                        }
                     }
 
                     const rawValue = wave * 127 + 128;
                     const value = Math.max(0, Math.min(255, rawValue));
                     const char = getAsciiChar(value);
 
-                    let hue = 200;
-                    let lightness = 30 + (value / 255) * 50;
+                let hue = 200;
+                let lightness = config.baseLightness + (value / 255) * (config.maxLightness - config.baseLightness);
 
                     if (mouseInfluence > 0) {
                         hue = 200 - (mouseInfluence * 40);
                         lightness += mouseInfluence * 30;
-                    } else {
+                    } else if (value > 220) { 
                         lightness = 80 + ((value - 220) / 35) * 20;
                     }
 
