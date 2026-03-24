@@ -27,11 +27,14 @@
         enableMouseInteraction: true,
         enableObstaclePush: false,
         obstaclePushStrength: 1.5,
-        mouseInfluenceRadius: 500,
+        mouseInfluenceRadius: 250,
 
         enableObstaclePush: false,
         obstacleRadius: 100,    
         obstacleStrength: 1.5,
+
+        enableObstacleFade: true,
+        obstacleLifespan:150,
 
         baseLightness: 15,
         maxLightness: 75,
@@ -52,9 +55,10 @@
         let obstacles = [];
 
         let isDrawing = false;
+        let isErasing = false;
         let lastDrawX = -1000;
         let lastDrawY = -1000;
-        const drawSpacing = 40;
+        const drawSpacing = 10;
         const eraseRadius = 60;
 
         if (config.enableMouseInteraction) {
@@ -65,6 +69,8 @@
             window.addEventListener('mouseout', () => {
                 mouseX = -1000;
                 mouseY = -1000;
+                isDrawing = false;
+                isErasing = false;
             });
 
             window.addEventListener('mousedown', (e) => {
@@ -97,7 +103,7 @@
 
         function addObstacle(x, y) {
             if (obstacles.length === 0 || Math.hypot(x - lastDrawX, y - lastDrawY) > drawSpacing) {
-                obstacles.push({ x, y });
+                obstacles.push({ x: x, y: y, lifespan: config.obstacleLifespan });
                 lastDrawX = x;
                 lastDrawY = y;
             }
@@ -167,7 +173,12 @@
                         
                         if (distance < obsRadius) {
                             let inf = (obsRadius - distance) / obsRadius;
-                            maxInfluence = Math.max(maxInfluence, inf); 
+
+                            if (config.enableObstacleFade) {
+                                inf *= (obstacles[i].lifespan / config.obstacleLifespan);
+                            }
+
+                            maxInfluence = Math.max(maxInfluence, inf);
                             
                             if (config.enableObstaclePush) {
                                 pushOffsetX -= (dx / distance) * inf * fontSize * config.obstacleStrength;
@@ -198,6 +209,13 @@
                     ctx.fillText(char, (x * fontSize) + offsetX, (y * fontSize) + offsetY);
                 }
             }
+            if (config.enableObstacleFade) {
+                for (let i = 0; i < obstacles.length; i++) {
+                    obstacles[i].lifespan--;
+                }
+                obstacles = obstacles.filter(obs => obs.lifespan > 0);
+            }
+
             frame++;
             requestAnimationFrame(animate);
         }
@@ -254,5 +272,4 @@
         });
     }
 </script>
-
 </body>
