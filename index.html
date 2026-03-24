@@ -37,7 +37,9 @@
         obstacleLifespan:150,
         
         enableMouseTrail: true,
-        trailLifespan: 150,
+        trailLifespan: 50,
+
+        maxObstacles: 1000,
 
         baseLightness: 15,
         maxLightness: 75,
@@ -253,7 +255,9 @@
                     obstacles[i].lifespan--;
                 }
             }
-            obstacles = obstacles.filter(obs => obs.permanent || obs.lifespan > 0);
+            if (obstacles.length > config.maxObstacles) {
+                obstacles.splice(0, obstacles.length - config.maxObstacles);
+            }
 
             frame++;
             requestAnimationFrame(animate);
