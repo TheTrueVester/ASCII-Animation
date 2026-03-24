@@ -27,14 +27,17 @@
         enableMouseInteraction: true,
         enableObstaclePush: false,
         obstaclePushStrength: 1.5,
-        mouseInfluenceRadius: 250,
+        mouseInfluenceRadius: 150,
 
         enableObstaclePush: false,
         obstacleRadius: 100,    
         obstacleStrength: 1.5,
 
-        enableObstacleFade: true,
+        enableObstacleFade: false,
         obstacleLifespan:150,
+        
+        enableMouseTrail: true,
+        trailLifespan: 150,
 
         baseLightness: 15,
         maxLightness: 75,
@@ -58,6 +61,9 @@
         let isErasing = false;
         let lastDrawX = -1000;
         let lastDrawY = -1000;
+        let lastTrailX = -1000;
+        let lastTrailY = -1000;
+
         const drawSpacing = 10;
         const eraseRadius = 60;
 
@@ -76,7 +82,7 @@
             window.addEventListener('mousedown', (e) => {
                 if (e.button === 0) {
                     isDrawing = true;
-                    addObstacle(e.clientX, e.clientY);
+                    addObstacle(e.clientX, e.clientY, !config.enableObstacleFade, false);
                 } else if (e.button === 1) {
                     obstacles = [];    
                 } else if (e.button === 2) {
@@ -93,19 +99,30 @@
             window.addEventListener('mousemove', (e) => {
                 mouseX = e.clientX;
                 mouseY = e.clientY;
+                if (config.enableMouseTrail) {
+                    addObstacle(e.clientX, e.clientY, false, true);
+                }
                 if (isDrawing) {
-                    addObstacle(e.clientX, e.clientY);
+                    addObstacle(e.clientX, e.clientY, !config.enableObstacleFade, false);
                 } else if (isErasing) {
                     eraseObstacles(e.clientX, e.clientY);
                 }
             });
         }
 
-        function addObstacle(x, y) {
-            if (obstacles.length === 0 || Math.hypot(x - lastDrawX, y - lastDrawY) > drawSpacing) {
-                obstacles.push({ x: x, y: y, lifespan: config.obstacleLifespan });
-                lastDrawX = x;
-                lastDrawY = y;
+        function addObstacle(x, y, isPermanent, isTrail) {
+            if (isPermanent) {
+                if (obstacles.length === 0 || Math.hypot(x - lastDrawX, y - lastDrawY) > drawSpacing) {
+                    obstacles.push({ x: x, y: y, lifespan: config.obstacleLifespan, permanent: true });
+                    lastDrawX = x;
+                    lastDrawY = y;
+                }
+            } else {
+                if (obstacles.length === 0 || Math.hypot(x - lastTrailX, y - lastTrailY) > drawSpacing) {
+                    obstacles.push({ x: x, y: y, lifespan: config.trailLifespan, permanent: false });
+                    lastTrailX = x;
+                    lastTrailY = y;
+                }
             }
         }
 
@@ -174,8 +191,8 @@
                         if (distance < obsRadius) {
                             let inf = (obsRadius - distance) / obsRadius;
 
-                            if (config.enableObstacleFade) {
-                                inf *= (obstacles[i].lifespan / config.obstacleLifespan);
+                            if (!obstacles[i].permanent) {
+                                inf *= (obstacles[i].lifespan / config.trailLifespan);
                             }
 
                             maxInfluence = Math.max(maxInfluence, inf);
@@ -209,12 +226,12 @@
                     ctx.fillText(char, (x * fontSize) + offsetX, (y * fontSize) + offsetY);
                 }
             }
-            if (config.enableObstacleFade) {
-                for (let i = 0; i < obstacles.length; i++) {
+            for (let i = 0; i < obstacles.length; i++) {
+                if (!obstacles[i].permanent) {
                     obstacles[i].lifespan--;
                 }
-                obstacles = obstacles.filter(obs => obs.lifespan > 0);
             }
+            obstacles = obstacles.filter(obs => obs.permanent || obs.lifespan > 0);
 
             frame++;
             requestAnimationFrame(animate);
