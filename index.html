@@ -64,7 +64,7 @@
         let lastTrailX = -1000;
         let lastTrailY = -1000;
 
-        const drawSpacing = 10;
+        const drawSpacing = 20;
         const eraseRadius = 60;
 
         if (config.enableMouseInteraction) {
@@ -77,6 +77,8 @@
                 mouseY = -1000;
                 isDrawing = false;
                 isErasing = false;
+                lastTrailX = -1000;
+                lastTrailY = -1000;
             });
 
             window.addEventListener('mousedown', (e) => {
@@ -92,7 +94,11 @@
             });
 
             window.addEventListener('mouseup', (e) => {
-                if (e.button === 0) isDrawing = false;
+                if (e.button === 0) {
+                    lastDrawX = -1000;
+                    lastDrawY = -1000;
+                    isDrawing = false;
+                }
                 if (e.button === 2) isErasing = false;
             });
 
@@ -111,18 +117,33 @@
         }
 
         function addObstacle(x, y, isPermanent, isTrail) {
-            if (isPermanent) {
-                if (obstacles.length === 0 || Math.hypot(x - lastDrawX, y - lastDrawY) > drawSpacing) {
-                    obstacles.push({ x: x, y: y, lifespan: config.obstacleLifespan, permanent: true });
-                    lastDrawX = x;
-                    lastDrawY = y;
+            let lastX = isPermanent ? lastDrawX : lastTrailX;
+            let lastY = isPermanent ? lastDrawY : lastTrailY;
+
+            if (lastDrawX === -1000 || lastDrawY === -1000) {
+                obstacles.push({ x: x, y: y, lifespan: isPermanent ? config.obstacleLifespan : config.trailLifespan, permanent: isPermanent });
+                if (isPermanent) { lastDrawX = x; lastDrawY = y; } 
+                else { lastTrailX = x; lastTrailY = y; }
+                return;
+            }
+
+            let dx = x - lastX;
+            let dy = y - lastY;
+            let distance = Math.hypot(dx, dy);
+
+            if (distance >= drawSpacing) {
+                let steps = Math.floor(distance / drawSpacing);
+                let stepX = dx / steps;
+                let stepY = dy / steps;
+
+                for (let i = 1; i <= steps; i++) {
+                    let nx = lastX + (stepX * i);
+                    let ny = lastY + (stepY * i);
+                    obstacles.push({ x: nx, y: ny, lifespan: isPermanent ? config.obstacleLifespan : config.trailLifespan, permanent: isPermanent });
                 }
-            } else {
-                if (obstacles.length === 0 || Math.hypot(x - lastTrailX, y - lastTrailY) > drawSpacing) {
-                    obstacles.push({ x: x, y: y, lifespan: config.trailLifespan, permanent: false });
-                    lastTrailX = x;
-                    lastTrailY = y;
-                }
+
+                if (isPermanent) { lastDrawX = x; lastDrawY = y; } 
+                else { lastTrailX = x; lastTrailY = y; }
             }
         }
 
@@ -144,6 +165,9 @@
             ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.font = `${fontSize}px monospace`;
+
+            const mouseRadiusSq = config.mouseInfluenceRadius * config.mouseInfluenceRadius;
+            const obsRadiusSq = config.obstacleRadius * config.obstacleRadius;
 
             for (let y = 0; y < rows; y++) {
                 for (let x = 0; x < columns; x++) {
@@ -171,14 +195,11 @@
                     if (mouseX !== -1000) {
                         let dx = charPixelX - mouseX;
                         let dy = charPixelY - mouseY;
-                        let distance = Math.sqrt(dx * dx + dy * dy);
-                        if (distance < influenceRadius) {
-                            let inf = (influenceRadius - distance) / influenceRadius;
+                        let distSq = dx * dx + dy * dy;
+                        if (distSq < mouseRadiusSq) {
+                            let distance = Math.sqrt(distSq);
+                            let inf = (config.mouseInfluenceRadius - distance) / config.mouseInfluenceRadius;
                             maxInfluence = Math.max(maxInfluence, inf);
-                            if (config.enableMousePush) {
-                                pushOffsetX -= (dx / distance) * inf * fontSize * config.mousePushStrength;
-                                pushOffsetY -= (dy / distance) * inf * fontSize * config.mousePushStrength;
-                            }
                         }
                     }
                     
@@ -186,10 +207,11 @@
                     for (let i = 0; i < obstacles.length; i++) {
                         let dx = charPixelX - obstacles[i].x;
                         let dy = charPixelY - obstacles[i].y;
-                        let distance = Math.sqrt(dx * dx + dy * dy);
+                        let distSq = dx * dx + dy * dy;
                         
-                        if (distance < obsRadius) {
-                            let inf = (obsRadius - distance) / obsRadius;
+                        if (distSq < obsRadiusSq) {
+                            let distance = Math.sqrt(distSq);
+                            let inf = (config.obstacleRadius - distance) / config.obstacleRadius;
 
                             if (!obstacles[i].permanent) {
                                 inf *= (obstacles[i].lifespan / config.trailLifespan);
