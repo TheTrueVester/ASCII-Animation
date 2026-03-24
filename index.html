@@ -58,15 +58,6 @@
         const eraseRadius = 60;
 
         if (config.enableMouseInteraction) {
-            window.addEventListener('mousemove', (e) => {
-                mouseX = e.clientX;
-                mouseY = e.clientY;
-            });
-
-            window.addEventListener('click', (e) => {
-                obstacles.push({ x: e.clientX, y: e.clientY});
-            });
-
             window.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
             });
@@ -80,6 +71,8 @@
                 if (e.button === 0) {
                     isDrawing = true;
                     addObstacle(e.clientX, e.clientY);
+                } else if (e.button === 1) {
+                    obstacles = [];    
                 } else if (e.button === 2) {
                     isErasing = true;
                     eraseObstacles(e.clientX, e.clientY);
