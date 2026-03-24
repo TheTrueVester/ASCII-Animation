@@ -25,9 +25,13 @@
         useWaveAnimation: true,
 
         enableMouseInteraction: true,
-        enableMousePush: false,
-        mousePushStrength: 1.5,
+        enableObstaclePush: false,
+        obstaclePushStrength: 1.5,
         mouseInfluenceRadius: 500,
+
+        enableObstaclePush: false,
+        obstacleRadius: 100,    
+        obstacleStrength: 1.5,
 
         baseLightness: 15,
         maxLightness: 75,
@@ -45,17 +49,66 @@
         let mouseX = -1000;
         let mouseY = -1000;
 
+        let obstacles = [];
+
+        let isDrawing = false;
+        let lastDrawX = -1000;
+        let lastDrawY = -1000;
+        const drawSpacing = 40;
+
         if (config.enableMouseInteraction) {
             window.addEventListener('mousemove', (e) => {
                 mouseX = e.clientX;
                 mouseY = e.clientY;
             });
-        }
 
-        window.addEventListener('mouseout', () => {
-            mouseX = -1000;
-            mouseY = -1000;
-        });
+            window.addEventListener('click', (e) => {
+                if (config.enableMouseInteraction) {
+                    obstacles.push({ x: e.clientX, y: e.clientY});
+                }
+            });
+
+            window.addEventListener('click', (e) => {
+                if (config.enableMouseInteraction) {
+                    obstacles.push({ x: e.clientX, y: e.clientY});
+                }
+            });
+
+            window.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                obstacles = [];
+            });
+
+            window.addEventListener('mouseout', () => {
+                mouseX = -1000;
+                mouseY = -1000;
+            });
+
+            window.addEventListener('mousedown', (e) => {
+                if (config.enableMouseInteraction) {
+                    isDrawing = true;
+                    lastDrawX = e.clientX;
+                    lastDrawY = e.clientY;
+                }
+            });
+
+            window.addEventListener('mouseup', () => {
+                isDrawing = false;
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (isDrawing) {
+                    const dx = e.clientX - lastDrawX;
+                    const dy = e.clientY - lastDrawY;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    if (distance > drawSpacing) {
+                        obstacles.push({ x: e.clientX, y: e.clientY});
+                        lastDrawX = e.clientX;
+                        lastDrawY = e.clientY;
+                    }
+                }
+            });
+        }
 
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
@@ -91,17 +144,44 @@
                     const distance = Math.sqrt(dx * dx + dy * dy);
 
                     const influenceRadius = config.mouseInfluenceRadius;
-                    let mouseInfluence = 0;
+                    let maxInfluence = 0;
+                    let pushOffsetX = 0;
+                    let pushOffsetY = 0;
 
-                    if (distance < influenceRadius) {
-                        mouseInfluence = (influenceRadius - distance) / influenceRadius;
-                        wave += mouseInfluence * 1.2; 
-
-                        if (config.enableMousePush) {
-                        offsetX -= (dx / distance) * mouseInfluence * fontSize * config.mousePushStrength;
-                        offsetY -= (dy / distance) * mouseInfluence * fontSize * config.mousePushStrength;
+                    if (mouseX !== -1000) {
+                        let dx = charPixelX - mouseX;
+                        let dy = charPixelY - mouseY;
+                        let distance = Math.sqrt(dx * dx + dy * dy);
+                        if (distance < influenceRadius) {
+                            let inf = (influenceRadius - distance) / influenceRadius;
+                            maxInfluence = Math.max(maxInfluence, inf);
+                            if (config.enableMousePush) {
+                                pushOffsetX -= (dx / distance) * inf * fontSize * config.mousePushStrength;
+                                pushOffsetY -= (dy / distance) * inf * fontSize * config.mousePushStrength;
+                            }
                         }
                     }
+                    
+                    let obsRadius = config.obstacleRadius;
+                    for (let i = 0; i < obstacles.length; i++) {
+                        let dx = charPixelX - obstacles[i].x;
+                        let dy = charPixelY - obstacles[i].y;
+                        let distance = Math.sqrt(dx * dx + dy * dy);
+                        
+                        if (distance < obsRadius) {
+                            let inf = (obsRadius - distance) / obsRadius;
+                            maxInfluence = Math.max(maxInfluence, inf); 
+                            
+                            if (config.enableObstaclePush) {
+                                pushOffsetX -= (dx / distance) * inf * fontSize * config.obstacleStrength;
+                                pushOffsetY -= (dy / distance) * inf * fontSize * config.obstacleStrength;
+                            }
+                        }
+                    }
+
+                    wave += maxInfluence * 1.2;
+                    offsetX += pushOffsetX;
+                    offsetY += pushOffsetY;
 
                     const rawValue = wave * 127 + 128;
                     const value = Math.max(0, Math.min(255, rawValue));
@@ -110,9 +190,9 @@
                 let hue = 200;
                 let lightness = config.baseLightness + (value / 255) * (config.maxLightness - config.baseLightness);
 
-                    if (mouseInfluence > 0) {
-                        hue = 200 - (mouseInfluence * 40);
-                        lightness += mouseInfluence * 30;
+                    if (maxInfluence > 0) {
+                        hue = 200 - (maxInfluence * 40);
+                        lightness += maxInfluence * 30;
                     } else if (value > 220) { 
                         lightness = 80 + ((value - 220) / 35) * 20;
                     }
