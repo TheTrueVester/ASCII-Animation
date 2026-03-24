@@ -55,6 +55,7 @@
         let lastDrawX = -1000;
         let lastDrawY = -1000;
         const drawSpacing = 40;
+        const eraseRadius = 60;
 
         if (config.enableMouseInteraction) {
             window.addEventListener('mousemove', (e) => {
@@ -63,20 +64,11 @@
             });
 
             window.addEventListener('click', (e) => {
-                if (config.enableMouseInteraction) {
-                    obstacles.push({ x: e.clientX, y: e.clientY});
-                }
-            });
-
-            window.addEventListener('click', (e) => {
-                if (config.enableMouseInteraction) {
-                    obstacles.push({ x: e.clientX, y: e.clientY});
-                }
+                obstacles.push({ x: e.clientX, y: e.clientY});
             });
 
             window.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
-                obstacles = [];
             });
 
             window.addEventListener('mouseout', () => {
@@ -85,29 +77,41 @@
             });
 
             window.addEventListener('mousedown', (e) => {
-                if (config.enableMouseInteraction) {
+                if (e.button === 0) {
                     isDrawing = true;
-                    lastDrawX = e.clientX;
-                    lastDrawY = e.clientY;
+                    addObstacle(e.clientX, e.clientY);
+                } else if (e.button === 2) {
+                    isErasing = true;
+                    eraseObstacles(e.clientX, e.clientY);
                 }
             });
 
-            window.addEventListener('mouseup', () => {
-                isDrawing = false;
+            window.addEventListener('mouseup', (e) => {
+                if (e.button === 0) isDrawing = false;
+                if (e.button === 2) isErasing = false;
             });
 
             window.addEventListener('mousemove', (e) => {
+                mouseX = e.clientX;
+                mouseY = e.clientY;
                 if (isDrawing) {
-                    const dx = e.clientX - lastDrawX;
-                    const dy = e.clientY - lastDrawY;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-                    if (distance > drawSpacing) {
-                        obstacles.push({ x: e.clientX, y: e.clientY});
-                        lastDrawX = e.clientX;
-                        lastDrawY = e.clientY;
-                    }
+                    addObstacle(e.clientX, e.clientY);
+                } else if (isErasing) {
+                    eraseObstacles(e.clientX, e.clientY);
                 }
             });
+        }
+
+        function addObstacle(x, y) {
+            if (obstacles.length === 0 || Math.hypot(x - lastDrawX, y - lastDrawY) > drawSpacing) {
+                obstacles.push({ x, y });
+                lastDrawX = x;
+                lastDrawY = y;
+            }
+        }
+
+        function eraseObstacles(x, y) {
+            obstacles = obstacles.filter(obs => Math.hypot(obs.x - x, obs.y - y) > eraseRadius);
         }
 
         canvas.width = window.innerWidth;
